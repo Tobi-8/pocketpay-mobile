@@ -69,6 +69,10 @@ When you create a new wallet, it will have a balance of 0 XLM and won't exist on
 2. Go to the [Stellar Laboratory Friendbot](https://laboratory.stellar.org/#create-account).
 3. Paste your Public Key and click "Get test network XLM".
 
+## Contributing
+
+Please read our [Contributing Guidelines](CONTRIBUTING.md) and review our [Accessibility Checklist](docs/accessibility.md) before making UI changes.
+
 ## License
 
 MIT
