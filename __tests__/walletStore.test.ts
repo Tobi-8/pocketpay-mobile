@@ -9,7 +9,7 @@ jest.mock('@stellar/stellar-sdk', () => ({
       if (secret === 'SVALIDSECRET') {
         return { publicKey: () => 'GPUBLICKEY' };
       }
-      throw new Error(`invalid secret ${secret}`);
+      throw new Error('invalid secret value');
     }),
   },
 }));
@@ -49,7 +49,7 @@ describe('walletStore secure storage handling', () => {
   });
 
   it('does not activate a created or imported wallet when secure storage write fails', async () => {
-    mockedSecureStore.setItemAsync.mockRejectedValueOnce(new Error('disk full SVALIDSECRET'));
+    mockedSecureStore.setItemAsync.mockRejectedValueOnce(new Error('secure storage write failed'));
 
     const saved = await useWalletStore.getState().setWallet('GPUBLICKEY', 'SVALIDSECRET');
 
@@ -82,7 +82,7 @@ describe('walletStore secure storage handling', () => {
   });
 
   it.each(['', '{"secretKey":', '{"publicKey":"GPUBLICKEY"}', 'not-a-valid-secret'])(
-    'clears unsafe stored wallet values during restore: %s',
+    'clears unsafe stored wallet values during restore',
     async (storedValue) => {
       mockedSecureStore.getItemAsync.mockResolvedValueOnce(storedValue);
 
