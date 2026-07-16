@@ -1,97 +1,154 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Alert } from 'react-native';
+import { View, Text, StyleSheet, Alert, ActivityIndicator, TouchableOpacity, ScrollView } from 'react-native';
 import { Button } from '../../src/components/Button';
 import { Input } from '../../src/components/Input';
 import { COLORS, SIZES, RADIUS } from '../../src/constants/theme';
 import { useWalletStore } from '../../src/store/walletStore';
-import { mockFetchVaultBalance, mockDepositToVault, mockWithdrawFromVault } from '../../src/services/stellar';
-import { PiggyBank, ShieldCheck } from 'lucide-react-native';
+import { useVaultStore } from '../../src/store/vaultStore';
+import { PiggyBank, ShieldCheck, AlertTriangle } from 'lucide-react-native';
 
 export default function VaultScreen() {
   const { publicKey, getSecretKey } = useWalletStore();
-  const [vaultBalance, setVaultBalance] = useState('0.0000000');
+  const {
+    balance,
+    isConfigured,
+    contractId,
+    isLoadingBalance,
+    isSubmitting,
+    balanceError,
+    loadBalance,
+    deposit,
+    withdraw,
+  } = useVaultStore();
+
   const [amount, setAmount] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [amountError, setAmountError] = useState<string | undefined>();
 
   useEffect(() => {
     if (publicKey) {
-      loadVaultBalance();
+      loadBalance(publicKey);
     }
   }, [publicKey]);
 
-  const loadVaultBalance = async () => {
-    if (!publicKey) return;
-    try {
-      const balance = await mockFetchVaultBalance(publicKey);
-      setVaultBalance(balance);
-    } catch (e) {
-      console.error(e);
+  const validateAmount = (): boolean => {
+    const value = parseFloat(amount);
+    if (!amount || isNaN(value) || value <= 0) {
+      setAmountError('Enter an amount greater than zero');
+      return false;
     }
+    const decimals = amount.split('.')[1];
+    if (decimals && decimals.length > 7) {
+      setAmountError('XLM supports at most 7 decimal places');
+      return false;
+    }
+    setAmountError(undefined);
+    return true;
   };
 
-  const handleDeposit = async () => {
-    if (!amount) return;
+  const handleAction = async (action: 'deposit' | 'withdraw') => {
+    if (!publicKey || !validateAmount()) return;
+
     try {
-      setIsLoading(true);
       const secret = await getSecretKey();
       if (!secret) throw new Error('Secret key not found');
-      
-      // MOCK CALL TO SOROBAN CONTRACT
-      await mockDepositToVault(secret, amount);
-      
-      Alert.alert('Success', 'Funds deposited into Soroban Vault (Mock)');
+
+      const hash =
+        action === 'deposit'
+          ? await deposit(secret, publicKey, amount)
+          : await withdraw(secret, publicKey, amount);
+
       setAmount('');
-      loadVaultBalance();
+      const verb = action === 'deposit' ? 'deposited into' : 'withdrawn from';
+      Alert.alert(
+        'Success',
+        hash
+          ? `Funds ${verb} the Soroban vault.\n\nTransaction: ${hash.slice(0, 8)}…${hash.slice(-8)}`
+          : `Funds ${verb} the vault (mock — no real funds moved).`
+      );
     } catch (e: any) {
-      Alert.alert('Error', e.message);
-    } finally {
-      setIsLoading(false);
+      Alert.alert(`${action === 'deposit' ? 'Deposit' : 'Withdrawal'} failed`, e.message);
     }
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.card}>
         <View style={styles.iconContainer}>
           <PiggyBank color={COLORS.primary} size={40} />
         </View>
         <Text style={styles.cardTitle}>Soroban Savings Vault</Text>
-        <Text style={styles.balanceValue}>{vaultBalance} XLM</Text>
-        <Text style={styles.cardSubtitle}>Earning ~5% APY (Mock)</Text>
+        {isLoadingBalance ? (
+          <ActivityIndicator size="large" color={COLORS.primary} style={styles.balanceLoader} />
+        ) : (
+          <Text style={styles.balanceValue}>{balance} XLM</Text>
+        )}
+        <Text style={styles.cardSubtitle}>
+          {isConfigured
+            ? `Contract ${contractId.slice(0, 4)}…${contractId.slice(-4)}`
+            : 'Mock balance'}
+        </Text>
+        {balanceError && (
+          <View style={styles.balanceErrorBox}>
+            <Text style={styles.balanceErrorText}>{balanceError}</Text>
+            <TouchableOpacity onPress={() => publicKey && loadBalance(publicKey)}>
+              <Text style={styles.retryText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
-      <View style={styles.infoBox}>
-        <ShieldCheck color={COLORS.success} size={24} style={{ marginRight: SIZES.sm }} />
-        <Text style={styles.infoText}>
-          This is a placeholder for a Soroban Smart Contract integration. Real funds are not moved.
-        </Text>
-      </View>
+      {isConfigured ? (
+        <View style={styles.infoBox}>
+          <ShieldCheck color={COLORS.success} size={24} style={{ marginRight: SIZES.sm }} />
+          <Text style={styles.infoText}>
+            Connected to a live Soroban smart contract on{' '}
+            {process.env.EXPO_PUBLIC_STELLAR_NETWORK || 'TESTNET'}. Deposits and withdrawals
+            submit real transactions.
+          </Text>
+        </View>
+      ) : (
+        <View style={styles.warningBox}>
+          <AlertTriangle color={COLORS.warning} size={24} style={{ marginRight: SIZES.sm }} />
+          <Text style={styles.warningText}>
+            No vault contract configured. Set EXPO_PUBLIC_VAULT_CONTRACT_ID in your .env file to
+            connect to a deployed Soroban contract. Running in mock mode — no real funds are
+            moved.
+          </Text>
+        </View>
+      )}
 
       <View style={styles.form}>
         <Input
           label="Amount to Deposit/Withdraw (XLM)"
           placeholder="0.00"
           value={amount}
-          onChangeText={setAmount}
+          onChangeText={(text) => {
+            setAmount(text);
+            if (amountError) setAmountError(undefined);
+          }}
           keyboardType="decimal-pad"
+          error={amountError}
+          editable={!isSubmitting}
         />
         <View style={styles.actions}>
-          <Button 
-            title="Deposit" 
-            onPress={handleDeposit} 
-            isLoading={isLoading}
+          <Button
+            title="Deposit"
+            onPress={() => handleAction('deposit')}
+            isLoading={isSubmitting}
+            disabled={isLoadingBalance}
             style={styles.actionButton}
           />
-          <Button 
-            title="Withdraw" 
+          <Button
+            title="Withdraw"
             variant="secondary"
-            onPress={() => Alert.alert('Notice', 'Withdrawal mock action triggered')} 
-            disabled={isLoading}
+            onPress={() => handleAction('withdraw')}
+            isLoading={isSubmitting}
+            disabled={isLoadingBalance}
             style={styles.actionButton}
           />
         </View>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -99,6 +156,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  content: {
     padding: SIZES.xl,
   },
   card: {
@@ -130,10 +189,28 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: SIZES.xs,
   },
+  balanceLoader: {
+    marginVertical: SIZES.sm,
+  },
   cardSubtitle: {
-    color: COLORS.success,
+    color: COLORS.textMuted,
     fontSize: 14,
     fontWeight: '500',
+  },
+  balanceErrorBox: {
+    marginTop: SIZES.md,
+    alignItems: 'center',
+  },
+  balanceErrorText: {
+    color: COLORS.error,
+    fontSize: 12,
+    textAlign: 'center',
+    marginBottom: SIZES.xs,
+  },
+  retryText: {
+    color: COLORS.primary,
+    fontSize: 14,
+    fontWeight: '600',
   },
   infoBox: {
     flexDirection: 'row',
@@ -149,6 +226,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
   },
+  warningBox: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255, 196, 0, 0.1)',
+    padding: SIZES.md,
+    borderRadius: RADIUS.md,
+    alignItems: 'center',
+    marginBottom: SIZES.xl,
+  },
+  warningText: {
+    color: COLORS.warning,
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 18,
+  },
   form: {
     flex: 1,
   },
@@ -160,5 +251,5 @@ const styles = StyleSheet.create({
   actionButton: {
     flex: 1,
     marginHorizontal: SIZES.xs,
-  }
+  },
 });
