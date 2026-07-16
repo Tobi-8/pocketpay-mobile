@@ -67,7 +67,6 @@ export default function HomeScreen() {
             <Text style={styles.emptyText}>No recent transactions</Text>
           </View>
         )}
-
         {recentTransactions.map((tx, index) => (
           <TransactionListItem
             key={tx.id || index}

@@ -3,12 +3,14 @@
   "version": "1.0.0",
   "main": "expo-router/entry",
   "scripts": {
+    "postinstall": "tsc --project node_modules/pocketpay-sdk/tsconfig.json --ignoreDeprecations 5.0",
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
     "test": "jest --watchAll=false",
-    "test:watch": "jest"
+    "test:watch": "jest",
+    "typecheck": "tsc --noEmit"
   },
   "jest": {
     "preset": "jest-expo",
@@ -25,7 +27,6 @@
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
-    "@stellar/stellar-sdk": "^15.1.0",
     "buffer": "^6.0.3",
     "events": "^3.3.0",
     "expo": "~54.0.33",
@@ -38,6 +39,8 @@
     "install": "^0.13.0",
     "lucide-react-native": "^1.16.0",
     "npx": "^10.2.2",
+    "pocketpay-sdk": "https://github.com/Axionvera/pocketpay-sdk/archive/44b8c21c86eecc4ef7efae7f8a21b07648799e26.tar.gz",
+    "process": "0.11.10",
     "react": "19.1.0",
     "react-native": "0.81.5",
     "react-native-get-random-values": "^2.0.0",

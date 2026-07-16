@@ -1,19 +1,11 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
+import { getPublicKey, type PaymentRecord } from 'pocketpay-sdk';
 import { fetchXlmBalance, fetchRecentTransactions } from '../services/stellar';
 
 const WALLET_KEY = 'pocketpay_wallet_secret';
 
-export interface TransactionRecord {
-  id: string;
-  type: string;
-  created_at: string;
-  source_account?: string;
-  to?: string;
-  from?: string;
-  amount?: string;
-  asset_type?: string;
-}
+export type TransactionRecord = PaymentRecord;
 
 interface WalletState {
   publicKey: string | null;
@@ -51,14 +43,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     try {
       const secretKey = await SecureStore.getItemAsync(WALLET_KEY);
       if (secretKey) {
-        // Derive public key from secret to ensure consistency without storing it separately
-        // Or we could have stored publicKey in AsyncStorage. For simplicity, we just
-        // derive it if we only have the secret. We need to import StellarSdk here or in service.
-        // To avoid circular dependencies, we'll do it simply here via dynamic import or pass from UI
-        // Actually, importing StellarSdk here is fine.
-        const StellarSdk = await import('@stellar/stellar-sdk');
-        const keypair = StellarSdk.Keypair.fromSecret(secretKey);
-        set({ publicKey: keypair.publicKey() });
+        set({ publicKey: getPublicKey(secretKey) });
         return true;
       }
       return false;
@@ -78,7 +63,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
         fetchXlmBalance(publicKey),
         fetchRecentTransactions(publicKey),
       ]);
-      set({ balance, transactions: txs as any, isLoading: false });
+      set({ balance, transactions: txs, isLoading: false });
     } catch (err: any) {
       console.error('Failed to refresh wallet data:', err);
       set({ isLoading: false, error: err.message || 'Failed to sync data' });

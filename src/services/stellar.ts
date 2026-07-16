@@ -1,48 +1,36 @@
-import * as StellarSdk from '@stellar/stellar-sdk';
+import {
+  createWallet,
+  getBalance,
+  getPayments,
+  sendXLM,
+  type PaymentRecord,
+  type SDKConfig,
+} from 'pocketpay-sdk';
 
-const server = new StellarSdk.Horizon.Server(
-  process.env.EXPO_PUBLIC_STELLAR_HORIZON_URL || 'https://horizon-testnet.stellar.org'
-);
+const sdkConfig: Partial<SDKConfig> = {
+  network: 'testnet',
+  horizonUrl:
+    process.env.EXPO_PUBLIC_STELLAR_HORIZON_URL ||
+    'https://horizon-testnet.stellar.org',
+};
 
 /**
  * Generates a new Stellar Keypair.
  * This function returns both the public and secret keys.
  * The secret key MUST be stored securely using SecureStore.
  */
-export const generateKeypair = () => {
-  const keypair = StellarSdk.Keypair.random();
-  return {
-    publicKey: keypair.publicKey(),
-    secretKey: keypair.secret(),
-  };
-};
-
-/**
- * Helper to fetch account details including balances.
- */
-export const fetchAccountDetails = async (publicKey: string) => {
-  try {
-    const account = await server.loadAccount(publicKey);
-    return account;
-  } catch (error: any) {
-    if (error.response && error.response.status === 404) {
-      throw new Error('Account not found on the network. Please fund it first.');
-    }
-    throw error;
-  }
-};
+export const generateKeypair = createWallet;
 
 /**
  * Fetch the XLM balance for a given public key.
  */
 export const fetchXlmBalance = async (publicKey: string): Promise<string> => {
   try {
-    const account = await fetchAccountDetails(publicKey);
-    const nativeBalance = account.balances.find((b) => b.asset_type === 'native');
-    return nativeBalance ? nativeBalance.balance : '0.0000000';
-  } catch (error: any) {
+    const accountBalance = await getBalance(publicKey, sdkConfig);
+    return accountBalance.nativeBalance;
+  } catch (error: unknown) {
     // If account is not found (unfunded), balance is 0
-    if (error.message.includes('not found')) {
+    if (isAccountNotFoundError(error)) {
       return '0.0000000';
     }
     throw error;
@@ -52,18 +40,15 @@ export const fetchXlmBalance = async (publicKey: string): Promise<string> => {
 /**
  * Fetch recent transactions for a given public key.
  */
-export const fetchRecentTransactions = async (publicKey: string, limit: number = 20) => {
+export const fetchRecentTransactions = async (
+  publicKey: string,
+  limit: number = 20
+): Promise<PaymentRecord[]> => {
   try {
-    const response = await server
-      .operations()
-      .forAccount(publicKey)
-      .order('desc')
-      .limit(limit)
-      .call();
-    
-    return response.records;
-  } catch (error: any) {
-    if (error.message && error.message.includes('not found')) {
+    const payments = await getPayments(publicKey, limit, 'desc', sdkConfig);
+    return payments.records;
+  } catch (error: unknown) {
+    if (isAccountNotFoundError(error)) {
       return [];
     }
     console.error('Error fetching transactions:', error);
@@ -80,41 +65,22 @@ export const sendXlmTransaction = async (
   amount: string,
   memoText?: string
 ) => {
-  try {
-    const sourceKeypair = StellarSdk.Keypair.fromSecret(secretKey);
-    const sourcePublicKey = sourceKeypair.publicKey();
-    
-    const account = await server.loadAccount(sourcePublicKey);
-    const fee = await server.fetchBaseFee();
-
-    let transactionBuilder = new StellarSdk.TransactionBuilder(account, {
-      fee: fee.toString(),
-      networkPassphrase: process.env.EXPO_PUBLIC_STELLAR_NETWORK_PASSPHRASE || StellarSdk.Networks.TESTNET,
-    });
-
-    transactionBuilder.addOperation(
-      StellarSdk.Operation.payment({
-        destination: destinationPublicKey,
-        asset: StellarSdk.Asset.native(),
-        amount: amount,
-      })
-    );
-
-    if (memoText) {
-      transactionBuilder.addMemo(StellarSdk.Memo.text(memoText));
-    }
-
-    transactionBuilder.setTimeout(30);
-    const transaction = transactionBuilder.build();
-    transaction.sign(sourceKeypair);
-
-    const response = await server.submitTransaction(transaction);
-    return response;
-  } catch (error: any) {
-    console.error('Error sending transaction:', error?.response?.data || error);
-    throw new Error(error?.response?.data?.extras?.result_codes?.transaction || 'Transaction failed');
-  }
+  return sendXLM(
+    {
+      sourceSecret: secretKey,
+      destination: destinationPublicKey,
+      amount,
+      memo: memoText || undefined,
+    },
+    sdkConfig
+  );
 };
+
+const isAccountNotFoundError = (error: unknown): boolean =>
+  typeof error === 'object' &&
+  error !== null &&
+  'code' in error &&
+  error.code === 'ACCOUNT_NOT_FOUND';
 
 /**
  * MOCK SERVICE WRAPPERS FOR SOROBAN SAVINGS VAULT (Placeholder)
