@@ -6,30 +6,58 @@ import { Input } from '../src/components/Input';
 import { COLORS, SIZES, RADIUS } from '../src/constants/theme';
 import { sendXlmTransaction } from '../src/services/stellar';
 import { useWalletStore } from '../src/store/walletStore';
+import { validateAddress, validateAmount, validateMemo } from '../src/utils/validation';
 import { Send as SendIcon } from 'lucide-react-native';
+
+interface FieldErrors {
+  destination?: string;
+  amount?: string;
+  memo?: string;
+}
 
 export default function SendScreen() {
   const router = useRouter();
-  const { getSecretKey, refreshWalletData, balance } = useWalletStore();
-  
+  const { publicKey, getSecretKey, refreshWalletData, balance } = useWalletStore();
+
   const [destination, setDestination] = useState('');
   const [amount, setAmount] = useState('');
   const [memo, setMemo] = useState('');
+  const [errors, setErrors] = useState<FieldErrors>({});
   const [isLoading, setIsLoading] = useState(false);
 
+  const handleDestinationChange = (value: string) => {
+    setDestination(value);
+    setErrors((prev) => ({
+      ...prev,
+      destination: value.trim() ? validateAddress(value, publicKey) ?? undefined : undefined,
+    }));
+  };
+
+  const handleAmountChange = (value: string) => {
+    setAmount(value);
+    setErrors((prev) => ({
+      ...prev,
+      amount: value.trim() ? validateAmount(value, balance) ?? undefined : undefined,
+    }));
+  };
+
+  const handleMemoChange = (value: string) => {
+    setMemo(value);
+    setErrors((prev) => ({
+      ...prev,
+      memo: validateMemo(value) ?? undefined,
+    }));
+  };
+
   const handleSend = async () => {
-    if (!destination.trim() || !amount.trim()) {
-      Alert.alert('Error', 'Destination and amount are required.');
-      return;
-    }
+    const fieldErrors: FieldErrors = {
+      destination: validateAddress(destination, publicKey) ?? undefined,
+      amount: validateAmount(amount, balance) ?? undefined,
+      memo: validateMemo(memo) ?? undefined,
+    };
+    setErrors(fieldErrors);
 
-    if (parseFloat(amount) <= 0) {
-      Alert.alert('Error', 'Amount must be greater than 0.');
-      return;
-    }
-
-    if (parseFloat(amount) > parseFloat(balance)) {
-      Alert.alert('Error', 'Insufficient balance.');
+    if (fieldErrors.destination || fieldErrors.amount || fieldErrors.memo) {
       return;
     }
 
@@ -72,16 +100,18 @@ export default function SendScreen() {
           label="Destination Address (Public Key)"
           placeholder="G..."
           value={destination}
-          onChangeText={setDestination}
+          onChangeText={handleDestinationChange}
+          error={errors.destination}
           autoCapitalize="none"
           autoCorrect={false}
         />
-        
+
         <Input
           label="Amount (XLM)"
           placeholder="0.00"
           value={amount}
-          onChangeText={setAmount}
+          onChangeText={handleAmountChange}
+          error={errors.amount}
           keyboardType="decimal-pad"
         />
 
@@ -89,7 +119,8 @@ export default function SendScreen() {
           label="Memo (Optional)"
           placeholder="Payment reference"
           value={memo}
-          onChangeText={setMemo}
+          onChangeText={handleMemoChange}
+          error={errors.memo}
         />
       </View>
 
