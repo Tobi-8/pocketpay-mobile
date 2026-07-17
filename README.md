@@ -1,6 +1,13 @@
 # Stellar PocketPay
 
-React Native Expo wallet for Stellar Testnet.
+React Native Expo wallet for Stellar Testnet. The app aims to feel polished and usable for core wallet flows while still evolving as the PocketPay ecosystem matures.
+
+## Project Status
+
+- This project is best described as a polished but still-evolving wallet experience rather than a production-ready product.
+- Core flows such as wallet creation and import, balance checks, sending and receiving, contacts, and the vault UI are implemented and actively refined.
+- The app is intentionally focused on Stellar Testnet for development and experimentation. Testnet XLM has no real monetary value.
+- The vault experience is currently mock-backed by default. A real Soroban contract integration can be enabled with configuration, but the default experience remains a safe placeholder.
 
 ## Documentation
 
@@ -18,6 +25,13 @@ React Native Expo wallet for Stellar Testnet.
 - Soroban vault placeholder
 
 For the expected screen sequence, validation, and UI states behind these features, see [Main wallet user flows](docs/user-flows.md).
+
+## Ecosystem
+
+PocketPay Mobile is part of a broader PocketPay stack:
+
+- [PocketPay SDK](https://github.com/Axionvera/pocketpay-sdk)
+- [PocketPay Contracts](https://github.com/Axionvera/pocketpay-contracts)
 
 ## Documentation
 
