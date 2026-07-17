@@ -5,10 +5,11 @@ import { Input } from '../../src/components/Input';
 import { COLORS, SIZES, RADIUS } from '../../src/constants/theme';
 import { useWalletStore } from '../../src/store/walletStore';
 import { useVaultStore } from '../../src/store/vaultStore';
+import { validateAmount } from '../../src/utils/validation';
 import { PiggyBank, ShieldCheck, AlertTriangle } from 'lucide-react-native';
 
 export default function VaultScreen() {
-  const { publicKey, getSecretKey } = useWalletStore();
+  const { publicKey, getSecretKey, balance: walletBalance } = useWalletStore();
   const {
     balance,
     isConfigured,
@@ -30,23 +31,22 @@ export default function VaultScreen() {
     }
   }, [publicKey]);
 
-  const validateAmount = (): boolean => {
-    const value = parseFloat(amount);
-    if (!amount || isNaN(value) || value <= 0) {
-      setAmountError('Enter an amount greater than zero');
-      return false;
-    }
-    const decimals = amount.split('.')[1];
-    if (decimals && decimals.length > 7) {
-      setAmountError('XLM supports at most 7 decimal places');
-      return false;
-    }
-    setAmountError(undefined);
-    return true;
+  const handleAmountChange = (value: string) => {
+    setAmount(value);
+    setAmountError(value.trim() ? validateAmount(value) ?? undefined : undefined);
   };
 
   const handleAction = async (action: 'deposit' | 'withdraw') => {
-    if (!publicKey || !validateAmount()) return;
+    if (!publicKey) return;
+
+    // Deposits are limited by the wallet balance; withdrawals by the vault balance.
+    const error =
+      validateAmount(amount, action === 'deposit' ? walletBalance : undefined) ??
+      (action === 'withdraw' && Number(amount) > Number(balance)
+        ? "You don't have enough XLM in the vault for this withdrawal."
+        : undefined);
+    setAmountError(error);
+    if (error) return;
 
     try {
       const secret = await getSecretKey();
@@ -58,6 +58,7 @@ export default function VaultScreen() {
           : await withdraw(secret, publicKey, amount);
 
       setAmount('');
+      setAmountError(undefined);
       const verb = action === 'deposit' ? 'deposited into' : 'withdrawn from';
       Alert.alert(
         'Success',
@@ -122,10 +123,7 @@ export default function VaultScreen() {
           label="Amount to Deposit/Withdraw (XLM)"
           placeholder="0.00"
           value={amount}
-          onChangeText={(text) => {
-            setAmount(text);
-            if (amountError) setAmountError(undefined);
-          }}
+          onChangeText={handleAmountChange}
           keyboardType="decimal-pad"
           error={amountError}
           editable={!isSubmitting}
