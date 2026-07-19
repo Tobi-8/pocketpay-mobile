@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -10,7 +10,8 @@ import {
 import { Clock } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useWalletStore, TransactionRecord } from '../../src/store/walletStore';
-import { COLORS, SIZES } from '../../src/constants/theme';
+import { SIZES, ThemeColors } from '../../src/constants/theme';
+import { useTheme } from '../../src/hooks/useTheme';
 import { TransactionListItem } from '../../src/components/TransactionListItem';
 import { NetworkStatusBanner } from '../../src/components/NetworkStatusBanner';
 import { useNetworkStatus } from '../../src/hooks/useNetworkStatus';
@@ -25,13 +26,15 @@ const ListFooter: React.FC<{
   isLoadingMore: boolean;
   hasMoreTransactions: boolean;
   hasTransactions: boolean;
-}> = ({ isLoadingMore, hasMoreTransactions, hasTransactions }) => {
+  colors: ThemeColors;
+  styles: ReturnType<typeof createStyles>;
+}> = ({ isLoadingMore, hasMoreTransactions, hasTransactions, colors, styles }) => {
   if (!hasTransactions) return null;
 
   if (isLoadingMore) {
     return (
       <View style={styles.footer} testID="loading-more-indicator">
-        <ActivityIndicator color={COLORS.primary} size="small" />
+        <ActivityIndicator color={colors.primary} size="small" />
         <Text style={styles.footerText}>Loading older transactions…</Text>
       </View>
     );
@@ -51,9 +54,9 @@ const ListFooter: React.FC<{
 /**
  * Shown when there are no transactions and the screen is not loading.
  */
-const EmptyState: React.FC = () => (
+const EmptyState: React.FC<{ colors: ThemeColors; styles: ReturnType<typeof createStyles> }> = ({ colors, styles }) => (
   <View style={styles.emptyState} testID="empty-state">
-    <Clock color={COLORS.textMuted} size={48} style={{ marginBottom: SIZES.md }} />
+    <Clock color={colors.textMuted} size={48} style={{ marginBottom: SIZES.md }} />
     <Text style={styles.emptyText}>No transactions found</Text>
     <Text style={styles.emptySubtext}>Your recent activity will appear here.</Text>
   </View>
@@ -112,9 +115,11 @@ export default function HistoryScreen() {
         isLoadingMore={isLoadingMore}
         hasMoreTransactions={hasMoreTransactions}
         hasTransactions={transactions.length > 0}
+        colors={colors}
+        styles={styles}
       />
     ),
-    [isLoadingMore, hasMoreTransactions, transactions.length]
+    [isLoadingMore, hasMoreTransactions, transactions.length, colors, styles]
   );
 
   return (
@@ -131,8 +136,8 @@ export default function HistoryScreen() {
           <RefreshControl
             refreshing={isLoading}
             onRefresh={refreshWalletData}
-            tintColor={COLORS.primary}
-            colors={[COLORS.primary]}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
           />
         }
         // Trigger load-more when 20 % of the list remains below the viewport.
@@ -147,7 +152,7 @@ export default function HistoryScreen() {
           />
         }
         ListFooterComponent={renderFooter}
-        ListEmptyComponent={!isLoading ? <EmptyState /> : null}
+        ListEmptyComponent={!isLoading ? <EmptyState colors={colors} styles={styles} /> : null}
         // Avoid stale closures while also keeping rendering performant.
         extraData={{ isLoadingMore, hasMoreTransactions }}
       />
@@ -157,10 +162,10 @@ export default function HistoryScreen() {
 
 // ─── Styles ────────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
   },
   listContent: {
     padding: SIZES.lg,
@@ -179,13 +184,13 @@ const styles = StyleSheet.create({
     marginTop: SIZES.xxl * 2,
   },
   emptyText: {
-    color: COLORS.textPrimary,
+    color: colors.textPrimary,
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: SIZES.xs,
   },
   emptySubtext: {
-    color: COLORS.textSecondary,
+    color: colors.textSecondary,
     fontSize: 14,
   },
   footer: {
@@ -196,7 +201,7 @@ const styles = StyleSheet.create({
     gap: SIZES.sm,
   },
   footerText: {
-    color: COLORS.textMuted,
+    color: colors.textMuted,
     fontSize: 13,
   },
 });

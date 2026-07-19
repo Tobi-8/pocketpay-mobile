@@ -18,6 +18,8 @@ interface FieldErrors {
 
 export default function SendScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { publicKey, getSecretKey, refreshWalletData, balance } = useWalletStore();
 
   const [destination, setDestination] = useState('');
@@ -177,10 +179,10 @@ export default function SendScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
     padding: SIZES.xl,
   },
   header: {
@@ -190,12 +192,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: COLORS.textPrimary,
+    color: colors.textPrimary,
     marginBottom: SIZES.xs,
   },
   subtitle: {
     fontSize: 14,
-    color: COLORS.textSecondary,
+    color: colors.textSecondary,
   },
   form: {
     flex: 1,

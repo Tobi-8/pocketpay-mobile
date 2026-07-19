@@ -1,14 +1,20 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert, Switch } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Button } from '../../src/components/Button';
-import { COLORS, SIZES, RADIUS } from '../../src/constants/theme';
+import { SIZES, RADIUS, ThemeColors } from '../../src/constants/theme';
 import { useWalletStore } from '../../src/store/walletStore';
 import { useAppStore } from '../../src/store/appStore';
 import { useAppLockStore } from '../../src/store/appLockStore';
 import { Users, LogOut, Key, Moon, Sun, Shield } from 'lucide-react-native';
 import { SecretKeyReveal } from '../../src/components/SecretKeyReveal';
 import { WalletResetConfirmModal } from '../../src/components/WalletResetConfirmModal';
+
+const THEME_OPTIONS: { mode: ThemeMode; label: string; Icon: typeof Sun }[] = [
+  { mode: 'light', label: 'Light', Icon: Sun },
+  { mode: 'dark', label: 'Dark', Icon: Moon },
+  { mode: 'system', label: 'System', Icon: Monitor },
+];
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -112,21 +118,21 @@ export default function SettingsScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Management</Text>
         <View style={styles.card}>
-          <Button 
-            title="Address Book / Contacts" 
-            variant="outline" 
+          <Button
+            title="Address Book / Contacts"
+            variant="outline"
             onPress={() => router.push('/contacts')}
             style={styles.menuButton}
           />
-          <Button 
-            title={showSecret ? "Hide Export Menu" : "Export Secret Key"} 
-            variant="outline" 
+          <Button
+            title={showSecret ? "Hide Export Menu" : "Export Secret Key"}
+            variant="outline"
             onPress={handleExportKey}
             style={styles.menuButton}
           />
           {showSecret && secretKey && (
-            <View style={{ padding: SIZES.lg, paddingTop: 0, borderBottomWidth: 1, borderBottomColor: COLORS.border }}>
-              <Text style={{ color: COLORS.textSecondary, marginBottom: SIZES.sm, fontSize: 14 }}>
+            <View style={{ padding: SIZES.lg, paddingTop: 0, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+              <Text style={{ color: colors.textSecondary, marginBottom: SIZES.sm, fontSize: 14 }}>
                 Your secret key is highly sensitive. Proceed with caution.
               </Text>
               <SecretKeyReveal secretKey={secretKey} />
@@ -136,9 +142,9 @@ export default function SettingsScreen() {
       </View>
 
       <View style={[styles.section, { marginTop: SIZES.xl }]}>
-        <Button 
-          title="Sign Out & Clear Wallet" 
-          variant="danger" 
+        <Button
+          title="Sign Out & Clear Wallet"
+          variant="danger"
           onPress={handleSignOut}
         />
       </View>
@@ -157,17 +163,17 @@ export default function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
     padding: SIZES.lg,
   },
   section: {
     marginBottom: SIZES.xl,
   },
   sectionTitle: {
-    color: COLORS.textSecondary,
+    color: colors.textSecondary,
     fontSize: 14,
     fontWeight: '500',
     marginBottom: SIZES.sm,
@@ -175,20 +181,19 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   card: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: colors.surface,
     borderRadius: RADIUS.lg,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
   },
-  row: {
+  themeRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: SIZES.lg,
+    padding: SIZES.sm,
+    gap: SIZES.sm,
   },
-  rowLeft: {
-    flexDirection: 'row',
+  themeOption: {
+    flex: 1,
     alignItems: 'center',
     flex: 1,
   },
@@ -213,7 +218,7 @@ const styles = StyleSheet.create({
   menuButton: {
     borderWidth: 0,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: colors.border,
     borderRadius: 0,
     justifyContent: 'flex-start',
     paddingHorizontal: SIZES.lg,
@@ -224,7 +229,7 @@ const styles = StyleSheet.create({
     paddingBottom: SIZES.xxl * 2,
   },
   footerText: {
-    color: COLORS.textMuted,
+    color: colors.textMuted,
     fontSize: 12,
     marginBottom: 4,
   }

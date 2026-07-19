@@ -6,11 +6,12 @@ import { useWalletStore } from '../src/store/walletStore';
 import { useAppStore } from '../src/store/appStore';
 import { LockScreen } from '../src/components/LockScreen';
 import { View, ActivityIndicator } from 'react-native';
-import { COLORS } from '../src/constants/theme';
+import { useTheme } from '../src/hooks/useTheme';
 
 export default function RootLayout() {
   const { loadWalletFromStorage, publicKey } = useWalletStore();
   const { initializeApp, isInitialized } = useAppStore();
+  const { colors, isDark } = useTheme();
   const segments = useSegments();
   const router = useRouter();
 
@@ -23,7 +24,7 @@ export default function RootLayout() {
     if (!isInitialized) return;
 
     const inAuthGroup = segments[0] === '(auth)';
-    
+
     if (publicKey && inAuthGroup) {
       // User is signed in and trying to access auth screens, redirect to main
       router.replace('/(tabs)');
@@ -35,8 +36,8 @@ export default function RootLayout() {
 
   if (!isInitialized) {
     return (
-      <View style={{ flex: 1, backgroundColor: COLORS.background, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+      <View style={{ flex: 1, backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
