@@ -33,6 +33,7 @@ export default function VaultScreen() {
 
   const [amount, setAmount] = useState('');
   const [amountError, setAmountError] = useState<string | undefined>();
+  const [isLoadingActivity] = useState(false);
 
   // Vault unavailable state
   const isMissingContractId = !isConfigured;
