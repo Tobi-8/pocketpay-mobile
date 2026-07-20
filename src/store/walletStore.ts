@@ -16,7 +16,6 @@ interface WalletState {
   publicKey: string | null;
   balance: string;
   transactions: TransactionRecord[];
-  lastRefreshed: number | null;
   isLoading: boolean;
   isFunding: boolean;
   fundError: string | null;
@@ -42,7 +41,6 @@ const resetWalletState = () => ({
   publicKey: null,
   balance: DEFAULT_BALANCE,
   transactions: [],
-  lastRefreshed: null,
   isLoadingMore: false,
   hasMoreTransactions: false,
   nextCursor: null,
@@ -85,7 +83,6 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   publicKey: null,
   balance: DEFAULT_BALANCE,
   transactions: [],
-  lastRefreshed: null,
   isLoading: false,
   isFunding: false,
   fundError: null,
@@ -147,7 +144,6 @@ export const useWalletStore = create<WalletState>((set, get) => ({
         transactions: page.records,
         nextCursor: page.nextCursor,
         hasMoreTransactions: page.hasMore,
-        lastRefreshed: Date.now(),
         isLoading: false,
       });
     } catch (err: any) {
